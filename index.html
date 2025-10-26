@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ditto | Sri Ganesh</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #0d1117;
+    color: #ddd;
+    font-family: "Poppins", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    padding: 15px;
+  }
+
+  h1 {
+    color: #00bfff;
+    margin: 15px 0 10px;
+    text-align: center;
+    font-size: 1.8rem;
+  }
+
+  #song-title {
+    font-size: 1.1rem;
+    margin: 10px 0;
+    text-align: center;
+    word-wrap: break-word;
+  }
+
+  .progress-container {
+    background: #333;
+    width: 100%;
+    max-width: 400px;
+    height: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+
+  .progress {
+    background: #00bfff;
+    height: 100%;
+    width: 0%;
+    border-radius: 10px;
+    transition: width 0.1s linear;
+  }
+
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .controls button {
+    font-size: 22px;
+    background: #00bfff;
+    border: none;
+    border-radius: 50%;
+    width: 55px;
+    height: 55px;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  .controls button:hover {
+    background: #0090cc;
+  }
+
+  .volume-control {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .volume-control input {
+    width: 100px;
+  }
+
+  .upload-section {
+    margin-top: 25px;
+    background: #1a1a1a;
+    padding: 15px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .upload-section h3 {
+    color: #00bfff;
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+
+  #song-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  #song-list li {
+    background: #222;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 0.9rem;
+  }
+
+  #song-list li:hover {
+    background: #00bfff;
+    color: white;
+  }
+
+  footer {
+    margin-top: auto;
+    color: #999;
+    text-align: center;
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  footer span {
+    color: #00bfff;
+  }
+
+  /* 📱 Responsive layout for mobile */
+  @media (max-width: 500px) {
+    body {
+      padding: 10px;
+    }
+    .controls {
+      gap: 10px;
+    }
+    .controls button {
+      width: 45px;
+      height: 45px;
+      font-size: 20px;
+    }
+    .volume-control input {
+      width: 80px;
+    }
+    h1 {
+      font-size: 1.5rem;
+    }
+    #song-title {
+      font-size: 1rem;
+    }
+  }
+</style>
+</head>
+
+<body>
+  <h1>🎵 Ditto | Sri Ganesh</h1>
+  <p id="song-title">No song playing</p>
+
+  <audio id="audio"></audio>
+  <div class="progress-container" id="progress-container">
+    <div class="progress" id="progress"></div>
+  </div>
+
+  <div class="controls">
+    <button id="prev">⏮</button>
+    <button id="play">▶</button>
+    <button id="next">⏭</button>
+  </div>
+
+  <div class="volume-control">
+    <label>🔊</label>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+  </div>
+
+  <div class="upload-section">
+    <h3>📤 Upload Your Songs</h3>
+    <input type="file" id="upload" accept="audio/mp3,audio/*" multiple>
+    <ul id="song-list"></ul>
+  </div>
+
+  <footer>© 2025 SriGanesh. All rights reserved.</span> | 2025</footer>
+
+<script>
+let songs = JSON.parse(localStorage.getItem("songs")) || [];
+let songNames = JSON.parse(localStorage.getItem("songNames")) || [];
+let songIndex = localStorage.getItem("lastSongIndex") ? parseInt(localStorage.getItem("lastSongIndex")) : 0;
+
+const audio = document.getElementById("audio");
+const playBtn = document.getElementById("play");
+const prevBtn = document.getElementById("prev");
+const nextBtn = document.getElementById("next");
+const songTitle = document.getElementById("song-title");
+const progress = document.getElementById("progress");
+const progressContainer = document.getElementById("progress-container");
+const volumeControl = document.getElementById("volume");
+const upload = document.getElementById("upload");
+const songList = document.getElementById("song-list");
+
+// Load song
+function loadSong(index) {
+  if (songs.length === 0) {
+    songTitle.textContent = "No songs available";
+    return;
+  }
+  audio.src = songs[index];
+  songTitle.textContent = songNames[index];
+  highlightPlayingSong();
+  localStorage.setItem("lastSongIndex", index);
+}
+
+// Play/pause toggle
+function playPause() {
+  if (audio.paused) {
+    audio.play();
+    playBtn.textContent = "⏸";
+  } else {
+    audio.pause();
+    playBtn.textContent = "▶";
+  }
+}
+
+// Next/previous
+function nextSong() {
+  songIndex = (songIndex + 1) % songs.length;
+  loadSong(songIndex);
+  audio.play();
+  playBtn.textContent = "⏸";
+}
+function prevSong() {
+  songIndex = (songIndex - 1 + songs.length) % songs.length;
+  loadSong(songIndex);
+  audio.play();
+  playBtn.textContent = "⏸";
+}
+
+playBtn.addEventListener("click", playPause);
+nextBtn.addEventListener("click", nextSong);
+prevBtn.addEventListener("click", prevSong);
+
+// Progress bar update
+audio.addEventListener("timeupdate", (e) => {
+  const { duration, currentTime } = e.srcElement;
+  const percent = (currentTime / duration) * 100;
+  progress.style.width = percent + "%";
+});
+
+// Seek bar
+progressContainer.addEventListener("click", (e) => {
+  const width = progressContainer.clientWidth;
+  const clickX = e.offsetX;
+  const duration = audio.duration;
+  audio.currentTime = (clickX / width) * duration;
+});
+
+// Volume
+volumeControl.addEventListener("input", (e) => {
+  audio.volume = e.target.value;
+});
+
+// Auto-next
+audio.addEventListener("ended", nextSong);
+
+// Upload songs (temporary URLs)
+upload.addEventListener("change", (e) => {
+  const files = Array.from(e.target.files);
+  files.forEach((file) => {
+    const url = URL.createObjectURL(file);
+    songs.push(url);
+    songNames.push(file.name.replace(".mp3", ""));
+  });
+  saveToLocalStorage();
+  displaySongs();
+  if (songs.length === files.length) loadSong(0);
+});
+
+// Display playlist
+function displaySongs() {
+  songList.innerHTML = "";
+  songNames.forEach((name, index) => {
+    const li = document.createElement("li");
+    li.textContent = name;
+    li.addEventListener("click", () => {
+      songIndex = index;
+      loadSong(songIndex);
+      audio.play();
+      playBtn.textContent = "⏸";
+    });
+    songList.appendChild(li);
+  });
+  highlightPlayingSong();
+}
+
+// Highlight current
+function highlightPlayingSong() {
+  const allSongs = songList.querySelectorAll("li");
+  allSongs.forEach((li, i) => {
+    li.style.background = i === songIndex ? "#00bfff" : "#222";
+    li.style.color = i === songIndex ? "#fff" : "#ccc";
+  });
+}
+
+// Save to local storage
+function saveToLocalStorage() {
+  localStorage.setItem("songs", JSON.stringify(songs));
+  localStorage.setItem("songNames", JSON.stringify(songNames));
+}
+
+// Init
+displaySongs();
+loadSong(songIndex);
+</script>
+</body>
+</html>
